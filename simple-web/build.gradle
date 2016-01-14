@@ -1,0 +1,90 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath(group: 'org.jfrog.buildinfo', name: 'build-info-extractor-gradle', version: '4.0.0')
+    }
+}
+
+apply plugin: 'com.jfrog.artifactory'
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: 'application'
+
+group = 'org.sample'
+version = currentVersion
+mainClassName = "org.sample.App"
+
+repositories {
+     maven { url "${artifactoryUrl}/artifactory/libs-release-local" }
+     maven { url "${artifactoryUrl}/artifactory/libs-snapshot-local" }
+     maven { url "http://jcenter.bintray.com" }
+}
+
+dependencies {
+    compile 'com.sparkjava:spark-core:2.3'
+    compile 'log4j:log4j:1.2.17'
+    compile 'org.sample:simple-calculator:+'
+    testCompile 'junit:junit:4.12'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': mainClassName
+    }
+
+    from({configurations.runtime.collect { it.isDirectory() ? it : zipTree(it) }}) {
+		exclude "META-INF/*.SF"
+		exclude "META-INF/*.DSA"
+		exclude "META-INF/*.RSA"
+	}
+}
+
+test {
+    testLogging {
+    	events "passed", "skipped", "failed", "standardOut", "standardError"
+    	afterSuite { desc, result ->
+			if (!desc.parent) {
+				println "Results: ${result.resultType} (Total: ${result.testCount}, Passed: ${result.successfulTestCount}, Failed: ${result.failedTestCount}, Skipped: ${result.skippedTestCount})"
+			}
+		}
+    }
+}
+
+artifactory {
+    contextUrl = "${artifactoryUrl}/artifactory"
+    publish {
+        repository {
+            repoKey = 'libs-snapshot-local'
+            username = "${artifactoryUser}"
+            password = "${artifactoryPassword}"
+        }
+        repository {
+            repoKey = 'libs-release-local'
+            username = "${artifactoryUser}"
+            password = "${artifactoryPassword}"
+        }
+        defaults {
+            publications('mavenJava')
+            publishArtifacts = true
+            properties = ['qa.level': 'basic', 'dev.team' : 'core']
+            publishPom = true
+        }
+    }
+    resolve {
+        repoKey = 'jcenter'
+    }
+}
+
+configurations.all {
+    resolutionStrategy.cacheDynamicVersionsFor 1, 'seconds'
+}
