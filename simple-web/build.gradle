@@ -13,7 +13,7 @@ apply plugin: 'maven-publish'
 apply plugin: 'application'
 
 group = 'org.sample'
-version = currentVersion
+version = "${currentVersion}-${currentBuild}"
 mainClassName = "org.sample.App"
 
 repositories {
@@ -64,12 +64,7 @@ artifactory {
     contextUrl = "${artifactoryUrl}/artifactory"
     publish {
         repository {
-            repoKey = 'libs-snapshot-local'
-            username = "${artifactoryUser}"
-            password = "${artifactoryPassword}"
-        }
-        repository {
-            repoKey = 'libs-release-local'
+            repoKey = version.endsWith('SNAPSHOT') ? 'libs-snapshot-local' : 'libs-release-local'
             username = "${artifactoryUser}"
             password = "${artifactoryPassword}"
         }
